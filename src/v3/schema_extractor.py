@@ -5,14 +5,27 @@ from typing import Dict, Any
 def infer_column_type(series: pd.Series) -> str:
     """
     Infer high-level data type of a column.
+    Includes safe detection of date-like strings.
     """
+    # Already datetime
     if pd.api.types.is_datetime64_any_dtype(series):
         return "date"
 
+    # Numeric
     if pd.api.types.is_numeric_dtype(series):
         return "numeric"
 
+    # Try parsing strings as dates (SAFE check)
+    if series.dtype == object:
+        parsed = pd.to_datetime(series, errors="coerce", infer_datetime_format=True)
+        non_null_ratio = parsed.notna().mean()
+
+        # If most values parse correctly, treat as date
+        if non_null_ratio > 0.8:
+            return "date"
+
     return "categorical"
+
 
 
 def numeric_signals(series: pd.Series) -> Dict[str, Any]:
