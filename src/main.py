@@ -1,5 +1,6 @@
 import pandas as pd
 from src.utils.data_inspector import inspect_dataset
+from src.explanation.suggestions import generate_suggestions
 
 from src.core.analytics_engine import (
     run_summary,
@@ -68,6 +69,12 @@ def main():
 
     print("\n=== DATA INSPECTION REPORT ===")
     print(inspection_report)
+    # V2: Generate AI-assisted suggestions
+    suggestions = generate_suggestions(inspection_report)
+
+    print("\n=== AI-ASSISTED SUGGESTIONS ===")
+    for s in suggestions:
+        print(f"- {s}")
 
 
 if __name__ == "__main__":
