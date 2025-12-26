@@ -16,6 +16,10 @@ from src.core.analytics_engine import (
 
 from src.explanation.explainer import explain
 
+def print_header(title: str):
+    print("\n" + "=" * 50)
+    print(title.upper())
+    print("=" * 50)
 
 def load_dataset(path: str) -> pd.DataFrame:
     """
@@ -63,25 +67,26 @@ def main():
     explanation = explain(user_intent, analytics_result)
 
     # Output
-    print("=== ANALYTICS RESULT ===")
+    print_header("Analytics Result")
+
     print(analytics_result)
 
-    print("\n=== EXPLANATION ===")
+    print_header("EXPLANATION")
     print(explanation)
     # V2: Inspect dataset
     inspection_report = inspect_dataset(df, key_column="order_id")
 
-    print("\n=== DATA INSPECTION REPORT ===")
+    print_header("DATA INSPECTION REPORT")
     print(inspection_report)
     # V2: Generate AI-assisted suggestions
     suggestions = generate_suggestions(inspection_report)
 
-    print("\n=== AI-ASSISTED SUGGESTIONS ===")
+    print_header("AI-ASSISTED SUGGESTIONS")
     for s in suggestions:
         print(f"- {s}")
         # V2.3: Guided analytics (loopable)
     while True:
-        print("\n=== GUIDED ANALYTICS OPTIONS ===")
+        print_header("GUIDED ANALYTICS OPTIONS")
         options = available_analyses(inspection_report)
 
         for idx, text in options:
@@ -125,10 +130,10 @@ def main():
 
         explanation = explain(intent, analytics_result)
 
-        print("\n=== RESULT ===")
+        print_header("RESULT")
         print(analytics_result)
 
-        print("\n=== EXPLANATION ===")
+        print_header("EXPLANATION")
         print(explanation)
 
 
