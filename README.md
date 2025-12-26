@@ -194,6 +194,154 @@ Human confirmation for semantic ambiguity
 
 Explainability at every stage
 
+Sample Outputs 
+---
+```
+$ python -m src.main
+==================================================
+V3 DATASET SCHEMA SIGNALS
+==================================================
+student_name: {'type': 'categorical', 'missing_count': 0, 'signals': {'unique_count': 4, 'sample_values': ['Rahul', 'Anita', 'Kiran', 'Meena']}}
+maths: {'type': 'numeric', 'missing_count': 0, 'signals': {'min': 65.0, 'max': 92.0, 'mean': 80.75, 'is_integer_like': True, 'unique_count': 4}}
+physics: {'type': 'numeric', 'missing_count': 0, 'signals': {'min': 70.0, 'max': 91.0, 'mean': 83.0, 'is_integer_like': True, 'unique_count': 4}}
+chemistry: {'type': 'numeric', 'missing_count': 0, 'signals': {'min': 68.0, 'max': 94.0, 'mean': 80.5, 'is_integer_like': True, 'unique_count': 4}}
+biology: {'type': 'numeric', 'missing_count': 0, 'signals': {'min': 72.0, 'max': 90.0, 'mean': 83.0, 'is_integer_like': True, 'unique_count': 3}}
+total_marks: {'type': 'numeric', 'missing_count': 0, 'signals': {'min': 275.0, 'max': 365.0, 'mean': 327.25, 'is_integer_like': True, 'unique_count': 4}}
+exam_date: {'type': 'date', 'missing_count': 0}
+
+==================================================
+V3 SEMANTIC MAPPING PROPOSALS
+==================================================
+revenue -> {'column': 'total_marks', 'confidence': 1.0, 'evidence': ['column_name_match', 'numeric_behavior', 'type_match']}
+order_date -> {'column': 'exam_date', 'confidence': 0.8, 'evidence': ['column_name_match', 'type_match']}
+category -> {'column': 'student_name', 'confidence': 0.2, 'evidence': ['type_match']}
+units_sold -> {'column': 'maths', 'confidence': 0.5, 'evidence': ['numeric_behavior', 'type_match']}
+unit_price -> {'column': 'maths', 'confidence': 0.5, 'evidence': ['numeric_behavior', 'type_match']}
+entity_name -> {'column': 'student_name', 'confidence': 0.2, 'evidence': ['type_match']}
+
+=== HUMAN CONFIRMATION REQUIRED ===
+
+----------------------------------
+Canonical field : revenue
+Proposed column : total_marks
+Confidence      : 1.0
+Evidence        : column_name_match, numeric_behavior, type_match
+Accept mapping? (y = accept / n = reject / custom = enter column name): y
+
+----------------------------------
+Canonical field : order_date
+Proposed column : exam_date
+Confidence      : 0.8
+Evidence        : column_name_match, type_match
+Accept mapping? (y = accept / n = reject / custom = enter column name): y
+
+----------------------------------
+Canonical field : category
+Proposed column : student_name
+Confidence      : 0.2
+Evidence        : type_match
+Accept mapping? (y = accept / n = reject / custom = enter column name): n
+Skipping mapping for 'category'.
+
+----------------------------------
+Canonical field : units_sold
+Proposed column : maths
+Confidence      : 0.5
+Evidence        : numeric_behavior, type_match
+Accept mapping? (y = accept / n = reject / custom = enter column name): n
+Skipping mapping for 'units_sold'.
+
+----------------------------------
+Canonical field : unit_price
+Proposed column : maths
+Confidence      : 0.5
+Evidence        : numeric_behavior, type_match
+Accept mapping? (y = accept / n = reject / custom = enter column name): n
+Skipping mapping for 'unit_price'.
+
+----------------------------------
+Canonical field : entity_name
+Proposed column : student_name
+Confidence      : 0.2
+Evidence        : type_match
+Accept mapping? (y = accept / n = reject / custom = enter column name): y
+
+==================================================
+V3 CONFIRMED MAPPINGS
+==================================================
+revenue -> total_marks
+order_date -> exam_date
+entity_name -> student_name
+
+==================================================
+V3 CANONICAL DATAFRAME
+==================================================
+  entity_name  revenue  order_date
+0       Rahul      315  2024-03-10
+1       Anita      354  2024-03-10
+2       Kiran      275  2024-03-10
+3       Meena      365  2024-03-10
+
+==================================================
+SYSTEM REASONING (V3.9)
+==================================================
+Dataset shape: Entity–Metric–Time
+
+Enabled analyses:
+✓ Summary
+✓ Ranking
+✓ Trend
+
+Disabled analyses:
+✗ Comparison — Category not mapped
+
+Assumptions:
+• Metric values are comparable across records
+
+Risks:
+⚠ Low metric variance may reduce ranking reliability
+⚠ Single time value limits trend analysis depth
+
+==================================================
+DATA INSPECTION REPORT
+==================================================
+{'shape': {'rows': 4, 'columns': 7}, 'missing_values': {'student_name': {'missing_count': 0, 'missing_percent': 0.0}, 'maths': {'missing_count': 0, 'missing_percen
+t': 0.0}, 'physics': {'missing_count': 0, 'missing_percent': 0.0}, 'chemistry': {'missing_count': 0, 'missing_percent': 0.0}, 'biology': {'missing_count': 0, 'missing_percent': 0.0}, 'total_marks': {'missing_count': 0, 'missing_percent': 0.0}, 'exam_date': {'missing_count': 0, 'missing_percent': 0.0}}, 'duplicates': {'total_duplicate_rows': 0, 'duplicate_by_key': None}, 'numeric_checks': {'revenue_consistency': 'NOT_APPLICABLE'}}                                                        
+==================================================
+AI-ASSISTED SUGGESTIONS
+==================================================
+- No missing values detected. No null handling is required.
+- No duplicate records detected.
+
+==================================================
+GUIDED ANALYTICS OPTIONS
+==================================================
+1. View summary
+0. Exit
+
+Select an option number to proceed: 1
+
+==================================================
+RESULT
+==================================================
+{'total_revenue': 1309}
+
+==================================================
+EXPLANATION
+==================================================
+Overall, total value is 1309.00.
+
+==================================================
+GUIDED ANALYTICS OPTIONS
+==================================================
+1. View summary
+0. Exit
+
+Select an option number to proceed: 0
+
+Exiting guided analytics. Goodbye!
+```
+
 Use Cases
 ---
 Safely analyzing unfamiliar CSV datasets
