@@ -1,28 +1,47 @@
 from typing import Dict
 
 
-def explain(intent: str, analytics_result: Dict) -> str:
-    """
-    Generate a human-readable explanation based on intent and analytics output.
-    """
+def explain(intent: str, analytics_result: dict) -> str:
     intent = intent.upper()
 
     if intent == "SUMMARY":
-        return explain_summary(analytics_result)
+        parts = []
 
-    if intent == "TREND":
-        return explain_trend(analytics_result)
+        if "total_revenue" in analytics_result:
+            parts.append(
+                f"Overall, total value is {analytics_result['total_revenue']:.2f}."
+            )
 
-    if intent == "COMPARE":
-        return explain_compare(analytics_result)
+        if "total_units_sold" in analytics_result:
+            parts.append(
+                f"Total units counted: {analytics_result['total_units_sold']}."
+            )
+
+        if "revenue_by_category" in analytics_result:
+            top_category = max(
+                analytics_result["revenue_by_category"],
+                key=analytics_result["revenue_by_category"].get
+            )
+            parts.append(
+                f"The highest contributing category is {top_category}."
+            )
+
+        return " ".join(parts) if parts else "No summary metrics available."
 
     if intent == "RANK":
-        return explain_rank(analytics_result)
+        top_key = next(iter(analytics_result))
+        top_entity = max(analytics_result[top_key], key=analytics_result[top_key].get)
+        return f"The top performer is {top_entity}."
 
-    if intent == "WHY":
-        return explain_why(analytics_result)
+    if intent == "COMPARE":
+        top_key = next(iter(analytics_result))
+        top_category = max(analytics_result[top_key], key=analytics_result[top_key].get)
+        return f"{top_category} has the highest contribution in this comparison."
 
-    return "This question type is not supported."
+    if intent == "TREND":
+        return "Trend analysis completed over the available time range."
+
+    return "Explanation not available for this analysis."
 
 
 def explain_summary(result: Dict) -> str:

@@ -1,6 +1,7 @@
 import pandas as pd
 
 from src.v3.human_confirmation import confirm_mappings
+from src.v3.system_reasoner import reason_about_system
 
 from src.v3.schema_adapter import adapt_dataframe, SchemaValidationError
 
@@ -42,7 +43,7 @@ def main():
     # -----------------------------
     # Load dataset
     # -----------------------------
-    dataset_path = "data/curated/sales_data.csv"
+    dataset_path = "data/curated/student_marks.csv"
     df = load_dataset(dataset_path)
 
     # -----------------------------
@@ -67,6 +68,7 @@ def main():
     # -----------------------------
     final_mapping = confirm_mappings(mappings)
 
+    
     print_header("V3 CONFIRMED MAPPINGS")
     for k, v in final_mapping.items():
         print(f"{k} -> {v}")
@@ -74,6 +76,27 @@ def main():
             canonical_df = adapt_dataframe(df, final_mapping)
             print_header("V3 CANONICAL DATAFRAME")
             print(canonical_df.head())
+            system_reasoning = reason_about_system(canonical_df, final_mapping)
+
+            print_header("SYSTEM REASONING (V3.9)")
+            print(f"Dataset shape: {system_reasoning['dataset_shape']}")
+
+            print("\nEnabled analyses:")
+            for a in system_reasoning["enabled_analyses"]:
+                print(f"✓ {a}")
+
+            print("\nDisabled analyses:")
+            for a, reason in system_reasoning["disabled_analyses"].items():
+                print(f"✗ {a} — {reason}")
+
+            print("\nAssumptions:")
+            for a in system_reasoning["assumptions"]:
+                print(f"• {a}")
+
+            print("\nRisks:")
+            for r in system_reasoning["risks"]:
+                print(f"⚠ {r}")
+
     except SchemaValidationError as e:
             print_header("SCHEMA VALIDATION ERROR")
             print(str(e))
