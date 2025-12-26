@@ -1,5 +1,9 @@
 import pandas as pd
 
+from src.v3.human_confirmation import confirm_mappings
+
+
+
 from src.utils.data_inspector import inspect_dataset
 from src.explanation.suggestions import generate_suggestions
 from src.explanation.guided_analytics import (
@@ -57,6 +61,14 @@ def main():
     print_header("V3 SEMANTIC MAPPING PROPOSALS")
     for field, info in mappings.items():
         print(f"{field} -> {info}")
+    # -----------------------------
+    # V3.4: Human confirmation
+    # -----------------------------
+    final_mapping = confirm_mappings(mappings)
+
+    print_header("V3 CONFIRMED MAPPINGS")
+    for k, v in final_mapping.items():
+        print(f"{k} -> {v}")
 
     # -----------------------------
     # V2.1: Data inspection
