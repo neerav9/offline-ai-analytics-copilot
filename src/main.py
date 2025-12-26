@@ -1,6 +1,14 @@
 import pandas as pd
 from src.utils.data_inspector import inspect_dataset
 from src.explanation.suggestions import generate_suggestions
+from src.v3.schema_extractor import extract_schema
+from src.v3.canonical_schema import get_all_fields
+
+
+
+
+
+
 from src.explanation.guided_analytics import (
     available_analyses,
     map_choice_to_intent,
@@ -27,6 +35,12 @@ def load_dataset(path: str) -> pd.DataFrame:
     """
     return pd.read_csv(path)
 
+    # V3.2: Extract dataset schema
+    schema_report = extract_schema(df)
+
+    print_header("V3 DATASET SCHEMA (SIGNALS)")
+    for col, info in schema_report.items():
+        print(f"{col}: {info}")
 
 def handle_intent(intent: str, df: pd.DataFrame) -> dict:
     """
@@ -50,6 +64,8 @@ def handle_intent(intent: str, df: pd.DataFrame) -> dict:
 
 
 def main():
+    
+
     """
     Entry point for the Offline AI Analytics Copilot (V1).
     """
