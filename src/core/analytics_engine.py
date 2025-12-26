@@ -11,15 +11,22 @@ from src.core.metrics import (
 )
 
 
-def run_summary(df: pd.DataFrame) -> Dict[str, Any]:
-    """
-    Handle SUMMARY intent.
-    """
-    return {
-        "total_revenue": total_revenue(df),
-        "total_units_sold": total_units_sold(df),
-        "revenue_by_region": revenue_by_dimension(df, "region").to_dict(),
-    }
+def run_summary(df):
+    result = {}
+
+    if "revenue" in df.columns:
+        result["total_revenue"] = df["revenue"].sum()
+
+    if "units_sold" in df.columns:
+        result["total_units_sold"] = df["units_sold"].sum()
+
+    if "category" in df.columns and "revenue" in df.columns:
+        result["revenue_by_category"] = (
+            df.groupby("category")["revenue"].sum().to_dict()
+        )
+
+    return result
+
 
 
 def run_trend(df: pd.DataFrame, freq: str = "M") -> Dict[str, Any]:

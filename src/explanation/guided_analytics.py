@@ -11,7 +11,7 @@ def available_analyses(inspection_report: Dict) -> List[Tuple[int, str]]:
     # Dataset shape must exist
     shape = inspection_report.get("shape", {})
     if shape.get("rows", 0) > 0:
-        options.append((option_id, "View overall sales summary"))
+        options.append((option_id, "View summary"))
         option_id += 1
 
     # Trend requires a date column
