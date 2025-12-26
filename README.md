@@ -163,11 +163,18 @@ It may refuse to answer questions when required assumptions cannot be verified.
 
 ## Sample Outputs
 
-![alt text](../../../Downloads/image-1.png)
-![alt text](../../../Downloads/image-2.png)
-![alt text](../../../Downloads/image-3.png)
-![alt text](../../../Downloads/image-4.png)
-![alt text](../../../Downloads/image-5.png)
-![alt text](../../../Downloads/image-6.png)
-![alt text](../../../Downloads/image-7.png)
-![alt text](../../../Downloads/image-8.png)
+<img width="1717" height="523" alt="image" src="https://github.com/user-attachments/assets/20c4b332-8559-43d7-8efd-bea874b051b4" />
+<img width="835" height="398" alt="image" src="https://github.com/user-attachments/assets/f254f76b-2c61-448b-a562-b22e71c770fb" />
+<img width="843" height="543" alt="image" src="https://github.com/user-attachments/assets/5336a2e9-d734-48ba-8d8e-c9652934291b" />
+<img width="843" height="344" alt="image" src="https://github.com/user-attachments/assets/3c5ddac6-5734-4cbd-8ad1-6401d8146501" />
+<img width="589" height="484" alt="image" src="https://github.com/user-attachments/assets/aaab6736-318d-479d-b6ec-be6a17215f3b" />
+<img width="1794" height="467" alt="image" src="https://github.com/user-attachments/assets/b9bd0f4e-a9e7-45a2-9b4e-b09ef2bd5606" />
+<img width="659" height="542" alt="image" src="https://github.com/user-attachments/assets/8c71ddb1-2eed-4426-bb47-0eeba29a4b11" />
+<img width="568" height="379" alt="image" src="https://github.com/user-attachments/assets/4da30579-feed-46c7-ae3b-8b35ea64da2f" />
+
+
+
+
+
+
+
