@@ -2,6 +2,7 @@ import pandas as pd
 
 from src.v3.human_confirmation import confirm_mappings
 
+from src.v3.schema_adapter import adapt_dataframe, SchemaValidationError
 
 
 from src.utils.data_inspector import inspect_dataset
@@ -69,7 +70,14 @@ def main():
     print_header("V3 CONFIRMED MAPPINGS")
     for k, v in final_mapping.items():
         print(f"{k} -> {v}")
-
+    try:
+            canonical_df = adapt_dataframe(df, final_mapping)
+            print_header("V3 CANONICAL DATAFRAME")
+            print(canonical_df.head())
+    except SchemaValidationError as e:
+            print_header("SCHEMA VALIDATION ERROR")
+            print(str(e))
+            return
     # -----------------------------
     # V2.1: Data inspection
     # -----------------------------
@@ -117,13 +125,13 @@ def main():
         intent = intent_payload["intent"]
 
         if intent == "SUMMARY":
-            analytics_result = run_summary(df)
+            analytics_result = run_summary(canonical_df)
         elif intent == "TREND":
-            analytics_result = run_trend(df)
+            analytics_result = run_trend( canonical_df)
         elif intent == "COMPARE":
-            analytics_result = run_compare(df, intent_payload["dimension"])
+            analytics_result = run_compare(canonical_df, intent_payload["dimension"])
         elif intent == "RANK":
-            analytics_result = run_rank(df, intent_payload["dimension"])
+            analytics_result = run_rank(canonical_df, intent_payload["dimension"])
         else:
             print("Unsupported analysis.")
             continue
