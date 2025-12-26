@@ -79,47 +79,57 @@ def main():
     print("\n=== AI-ASSISTED SUGGESTIONS ===")
     for s in suggestions:
         print(f"- {s}")
-    # V2.3: Guided analytics
-    print("\n=== GUIDED ANALYTICS OPTIONS ===")
-    options = available_analyses(inspection_report)
+        # V2.3: Guided analytics (loopable)
+    while True:
+        print("\n=== GUIDED ANALYTICS OPTIONS ===")
+        options = available_analyses(inspection_report)
 
-    for idx, text in options:
-        print(f"{idx}. {text}")
+        for idx, text in options:
+            print(f"{idx}. {text}")
 
-    # Simple CLI selection (V2)
-    selected = int(input("\nSelect an option number to proceed: "))
+        print("0. Exit")
 
-    selected_text = dict(options).get(selected)
-    if not selected_text:
-        raise ValueError("Invalid selection")
+        try:
+            selected = int(input("\nSelect an option number to proceed: "))
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+            continue
 
-    intent_payload = map_choice_to_intent(selected_text)
+        if selected == 0:
+            print("\nExiting guided analytics. Goodbye!")
+            break
 
-    # Execute chosen analysis
-    intent = intent_payload["intent"]
+        selected_text = dict(options).get(selected)
+        if not selected_text:
+            print("Invalid selection. Please try again.")
+            continue
 
-    if intent == "SUMMARY":
-        analytics_result = run_summary(df)
+        intent_payload = map_choice_to_intent(selected_text)
+        intent = intent_payload["intent"]
 
-    elif intent == "TREND":
-        analytics_result = run_trend(df)
+        if intent == "SUMMARY":
+            analytics_result = run_summary(df)
 
-    elif intent == "COMPARE":
-        analytics_result = run_compare(df, intent_payload["dimension"])
+        elif intent == "TREND":
+            analytics_result = run_trend(df)
 
-    elif intent == "RANK":
-        analytics_result = run_rank(df, intent_payload["dimension"])
+        elif intent == "COMPARE":
+            analytics_result = run_compare(df, intent_payload["dimension"])
 
-    else:
-        raise ValueError("Unsupported intent")
+        elif intent == "RANK":
+            analytics_result = run_rank(df, intent_payload["dimension"])
 
-    explanation = explain(intent, analytics_result)
+        else:
+            print("Unsupported analysis.")
+            continue
 
-    print("\n=== GUIDED ANALYTICS RESULT ===")
-    print(analytics_result)
+        explanation = explain(intent, analytics_result)
 
-    print("\n=== GUIDED ANALYTICS EXPLANATION ===")
-    print(explanation)
+        print("\n=== RESULT ===")
+        print(analytics_result)
+
+        print("\n=== EXPLANATION ===")
+        print(explanation)
 
 
 if __name__ == "__main__":
