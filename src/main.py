@@ -1,6 +1,10 @@
 import pandas as pd
 from src.utils.data_inspector import inspect_dataset
 from src.explanation.suggestions import generate_suggestions
+from src.explanation.guided_analytics import (
+    available_analyses,
+    map_choice_to_intent,
+)
 
 from src.core.analytics_engine import (
     run_summary,
@@ -75,6 +79,47 @@ def main():
     print("\n=== AI-ASSISTED SUGGESTIONS ===")
     for s in suggestions:
         print(f"- {s}")
+    # V2.3: Guided analytics
+    print("\n=== GUIDED ANALYTICS OPTIONS ===")
+    options = available_analyses(inspection_report)
+
+    for idx, text in options:
+        print(f"{idx}. {text}")
+
+    # Simple CLI selection (V2)
+    selected = int(input("\nSelect an option number to proceed: "))
+
+    selected_text = dict(options).get(selected)
+    if not selected_text:
+        raise ValueError("Invalid selection")
+
+    intent_payload = map_choice_to_intent(selected_text)
+
+    # Execute chosen analysis
+    intent = intent_payload["intent"]
+
+    if intent == "SUMMARY":
+        analytics_result = run_summary(df)
+
+    elif intent == "TREND":
+        analytics_result = run_trend(df)
+
+    elif intent == "COMPARE":
+        analytics_result = run_compare(df, intent_payload["dimension"])
+
+    elif intent == "RANK":
+        analytics_result = run_rank(df, intent_payload["dimension"])
+
+    else:
+        raise ValueError("Unsupported intent")
+
+    explanation = explain(intent, analytics_result)
+
+    print("\n=== GUIDED ANALYTICS RESULT ===")
+    print(analytics_result)
+
+    print("\n=== GUIDED ANALYTICS EXPLANATION ===")
+    print(explanation)
 
 
 if __name__ == "__main__":
