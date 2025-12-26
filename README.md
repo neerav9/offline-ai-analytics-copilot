@@ -172,7 +172,6 @@ It may refuse to answer questions when required assumptions cannot be verified.
 <img width="659" height="542" alt="image" src="https://github.com/user-attachments/assets/8c71ddb1-2eed-4426-bb47-0eeba29a4b11" />
 <img width="568" height="379" alt="image" src="https://github.com/user-attachments/assets/4da30579-feed-46c7-ae3b-8b35ea64da2f" />
 
->>>>>>> 35b3b86a5eb1e74fc70a7650f5be62852b03b1fc
 
 
 
