@@ -7,6 +7,7 @@ from src.core.metrics import (
     revenue_by_dimension,
     revenue_over_time,
     revenue_change,
+    delta_by_dimension,
 )
 
 
@@ -50,23 +51,27 @@ def run_rank(df: pd.DataFrame, dimension: str, top_n: int = 5) -> Dict[str, Any]
 
 
 def run_why(
-    df: pd.DataFrame,
     current_period_df: pd.DataFrame,
     previous_period_df: pd.DataFrame,
+    dimension: str = "region",
 ) -> Dict[str, Any]:
     """
-    Handle WHY intent.
+    Handle WHY intent using contribution (delta) analysis.
     """
     current_revenue = total_revenue(current_period_df)
     previous_revenue = total_revenue(previous_period_df)
 
     change_percent = revenue_change(current_revenue, previous_revenue)
 
-    breakdown = revenue_by_dimension(df, "region").to_dict()
+    delta_contribution = delta_by_dimension(
+        current_period_df,
+        previous_period_df,
+        dimension
+    ).to_dict()
 
     return {
         "current_revenue": current_revenue,
         "previous_revenue": previous_revenue,
         "change_percent": change_percent,
-        "revenue_breakdown_by_region": breakdown,
+        f"delta_by_{dimension}": delta_contribution,
     }

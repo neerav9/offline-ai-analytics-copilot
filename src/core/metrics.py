@@ -49,3 +49,16 @@ def revenue_change(current_value: float, previous_value: float) -> float:
     if previous_value == 0:
         return 0.0
     return ((current_value - previous_value) / previous_value) * 100
+def delta_by_dimension(
+    current_df: pd.DataFrame,
+    previous_df: pd.DataFrame,
+    dimension: str
+) -> pd.Series:
+    """
+    Calculate change in revenue by dimension between two periods.
+    """
+    current = revenue_by_dimension(current_df, dimension)
+    previous = revenue_by_dimension(previous_df, dimension)
+
+    delta = current.subtract(previous, fill_value=0)
+    return delta.sort_values()
