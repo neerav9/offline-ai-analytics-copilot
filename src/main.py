@@ -1,4 +1,5 @@
 import pandas as pd
+from src.utils.data_inspector import inspect_dataset
 
 from src.core.analytics_engine import (
     run_summary,
@@ -62,6 +63,11 @@ def main():
 
     print("\n=== EXPLANATION ===")
     print(explanation)
+    # V2: Inspect dataset
+    inspection_report = inspect_dataset(df, key_column="order_id")
+
+    print("\n=== DATA INSPECTION REPORT ===")
+    print(inspection_report)
 
 
 if __name__ == "__main__":
