@@ -162,11 +162,12 @@ This system intentionally prioritizes analytical safety and correctness.
 It may refuse to answer questions when required assumptions cannot be verified.
 
 ## Sample Outputs
-![alt text](image-1.png)
-![alt text](image-2.png)
-![alt text](image-3.png)
-![alt text](image-4.png)
-![alt text](image-5.png)
-![alt text](image-6.png)
-![alt text](image-7.png)
-![alt text](image-8.png)
+
+![alt text](../../../Downloads/image-1.png)
+![alt text](../../../Downloads/image-2.png)
+![alt text](../../../Downloads/image-3.png)
+![alt text](../../../Downloads/image-4.png)
+![alt text](../../../Downloads/image-5.png)
+![alt text](../../../Downloads/image-6.png)
+![alt text](../../../Downloads/image-7.png)
+![alt text](../../../Downloads/image-8.png)
