@@ -17,7 +17,7 @@ def infer_column_type(series: pd.Series) -> str:
 
     # Try parsing strings as dates (SAFE check)
     if series.dtype == object:
-        parsed = pd.to_datetime(series, errors="coerce", infer_datetime_format=True)
+        parsed = pd.to_datetime(series, errors="coerce")
         non_null_ratio = parsed.notna().mean()
 
         # If most values parse correctly, treat as date
