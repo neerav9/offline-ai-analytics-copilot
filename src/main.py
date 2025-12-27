@@ -1,35 +1,31 @@
 import pandas as pd
 from typing import List
 
+# -----------------------------
+# V3 (signals only)
+# -----------------------------
 from src.v3.schema_extractor import extract_schema
 
+# -----------------------------
+# V4 core
+# -----------------------------
 from src.v4.semantic_mapper import propose_mappings, confirm_mappings
 from src.v4.schema_adapter import build_canonical_dataframe, SchemaValidationError
 from src.v4.system_reasoner import reason_about_capabilities
 from src.v4.analytics_engine import (
     run_summary,
     run_rank,
-    run_compare,
     run_trend,
+    run_compare,
 )
 
 from src.explanation.explainer import explain
 
 
-# -----------------------------
-# V4 Intent Adapter
-# -----------------------------
-INTENT_MAP = {
-    "summary": "SUMMARY",
-    "rank": "RANK",
-    "trend": "TREND",
-    "compare": "COMPARE",
-}
+# --------------------------------------------------
+# Utility
+# --------------------------------------------------
 
-
-# -----------------------------
-# Utilities
-# -----------------------------
 def print_header(title: str):
     print("\n" + "=" * 50)
     print(title.upper())
@@ -39,17 +35,13 @@ def print_header(title: str):
 def load_dataset(path: str) -> pd.DataFrame:
     return pd.read_csv(path)
 
+
 def select_active_measure(measures: List[str]) -> str:
     """
-    Force explicit selection of a single active measure.
+    Let user choose the active measure at runtime.
     """
-    if not measures:
-        raise ValueError("No measures confirmed. Cannot proceed.")
+    print_header("SELECT ACTIVE MEASURE")
 
-    if len(measures) == 1:
-        return measures[0]
-
-    print("\n=== SELECT ACTIVE MEASURE ===\n")
     for idx, m in enumerate(measures, start=1):
         print(f"{idx}. {m}")
 
@@ -63,13 +55,15 @@ def select_active_measure(measures: List[str]) -> str:
 
         print("Invalid selection. Try again.")
 
-# -----------------------------
+
+# --------------------------------------------------
 # Main
-# -----------------------------
+# --------------------------------------------------
+
 def main():
     """
-    Offline AI Analytics Copilot — V4
-    Schema-driven, capability-gated analytics.
+    Offline AI Analytics Copilot — V4.2
+    Runtime measure switching without re-confirmation.
     """
 
     # -----------------------------
@@ -79,7 +73,7 @@ def main():
     df = load_dataset(dataset_path)
 
     # -----------------------------
-    # Schema extraction
+    # Schema extraction (signals)
     # -----------------------------
     schema_report = extract_schema(df)
 
@@ -88,7 +82,7 @@ def main():
         print(f"{col}: {info}")
 
     # -----------------------------
-    # Semantic mapping
+    # Semantic mapping (ONCE)
     # -----------------------------
     proposals = propose_mappings(schema_report)
 
@@ -97,34 +91,34 @@ def main():
         print(f"{k} -> {v}")
 
     # -----------------------------
-    # Human confirmation
+    # Human confirmation (ONCE)
     # -----------------------------
-    confirmed_mappings = confirm_mappings(proposals)
+    confirmed = confirm_mappings(proposals)
 
     # -----------------------------
-    # Active measure selection (V4.1)
+    # Active measure selection
     # -----------------------------
-    active_measure = select_active_measure(confirmed_mappings["measures"])
-    confirmed_mappings["active_measure"] = active_measure
+    measures = confirmed.get("measures", [])
+    if not measures:
+        print_header("SCHEMA VALIDATION ERROR")
+        print("No valid measure candidates confirmed.")
+        return
+
+    active_measure = select_active_measure(measures)
+    confirmed["active_measure"] = active_measure
 
     print_header("ACTIVE MEASURE SELECTED")
     print(active_measure)
 
-
-    print_header("CONFIRMED MAPPINGS")
-    for k, v in confirmed_mappings.items():
-        print(f"{k} -> {v}")
-
     # -----------------------------
-    # Canonical dataframe
+    # Canonical dataframe build
     # -----------------------------
     try:
         canonical_df = build_canonical_dataframe(
-        df,
-        confirmed_mappings,
-        confirmed_mappings["active_measure"]
-    )
-
+            df,
+            confirmed,
+            active_measure=active_measure
+        )
     except SchemaValidationError as e:
         print_header("SCHEMA VALIDATION ERROR")
         print(str(e))
@@ -158,7 +152,7 @@ def main():
         print(f"⚠ {r}")
 
     # -----------------------------
-    # Guided analytics (capability-gated)
+    # Guided analytics loop
     # -----------------------------
     while True:
         print_header("AVAILABLE ANALYSES")
@@ -169,6 +163,7 @@ def main():
         for idx, name in options.items():
             print(f"{idx}. {name}")
 
+        print("9. Switch measure")
         print("0. Exit")
 
         try:
@@ -177,45 +172,49 @@ def main():
             print("Invalid input.")
             continue
 
+        # Exit
         if choice == 0:
             print("\nExiting. Goodbye.")
             break
 
-        selected = options.get(choice)
-        if not selected:
-            print("Invalid choice.")
+        # Runtime measure switch (NO reconfirmation)
+        if choice == 9:
+            active_measure = select_active_measure(measures)
+            confirmed["active_measure"] = active_measure
+
+            canonical_df = build_canonical_dataframe(
+                df,
+                confirmed,
+                active_measure=active_measure
+            )
+
+            capabilities = reason_about_capabilities(canonical_df)
+
+            print_header("MEASURE SWITCHED")
+            print(f"Active measure: {active_measure}")
             continue
 
-        # 🔑 CRITICAL FIX: map to engine intent
-        intent = INTENT_MAP.get(selected)
-
+        intent = options.get(choice)
         if not intent:
-            print("Unsupported analysis.")
+            print("Invalid choice.")
             continue
 
         # -----------------------------
         # Execute analytics
         # -----------------------------
-        if intent == "SUMMARY":
+        if intent == "summary":
             result = run_summary(canonical_df)
-
-        elif intent == "RANK":
+        elif intent == "rank":
             result = run_rank(canonical_df)
-
-        elif intent == "TREND":
+        elif intent == "trend":
             result = run_trend(canonical_df)
-
-        elif intent == "COMPARE":
-            result = run_compare(
-                canonical_df,
-                [c for c in canonical_df.columns if c.startswith("dimension_")]
-            )
-
+        elif intent == "compare":
+            result = run_compare(canonical_df)
         else:
             print("Unsupported analysis.")
             continue
 
-        explanation = explain(intent, result)
+        explanation = explain(intent.upper(), result)
 
         print_header("RESULT")
         print(result)
