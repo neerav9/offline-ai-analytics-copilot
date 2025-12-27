@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import List
 
 from src.v3.schema_extractor import extract_schema
 
@@ -38,6 +39,29 @@ def print_header(title: str):
 def load_dataset(path: str) -> pd.DataFrame:
     return pd.read_csv(path)
 
+def select_active_measure(measures: List[str]) -> str:
+    """
+    Force explicit selection of a single active measure.
+    """
+    if not measures:
+        raise ValueError("No measures confirmed. Cannot proceed.")
+
+    if len(measures) == 1:
+        return measures[0]
+
+    print("\n=== SELECT ACTIVE MEASURE ===\n")
+    for idx, m in enumerate(measures, start=1):
+        print(f"{idx}. {m}")
+
+    while True:
+        try:
+            choice = int(input("\nChoose measure number: "))
+            if 1 <= choice <= len(measures):
+                return measures[choice - 1]
+        except ValueError:
+            pass
+
+        print("Invalid selection. Try again.")
 
 # -----------------------------
 # Main
@@ -77,6 +101,16 @@ def main():
     # -----------------------------
     confirmed_mappings = confirm_mappings(proposals)
 
+    # -----------------------------
+    # Active measure selection (V4.1)
+    # -----------------------------
+    active_measure = select_active_measure(confirmed_mappings["measures"])
+    confirmed_mappings["active_measure"] = active_measure
+
+    print_header("ACTIVE MEASURE SELECTED")
+    print(active_measure)
+
+
     print_header("CONFIRMED MAPPINGS")
     for k, v in confirmed_mappings.items():
         print(f"{k} -> {v}")
@@ -85,7 +119,12 @@ def main():
     # Canonical dataframe
     # -----------------------------
     try:
-        canonical_df = build_canonical_dataframe(df, confirmed_mappings)
+        canonical_df = build_canonical_dataframe(
+        df,
+        confirmed_mappings,
+        confirmed_mappings["active_measure"]
+    )
+
     except SchemaValidationError as e:
         print_header("SCHEMA VALIDATION ERROR")
         print(str(e))

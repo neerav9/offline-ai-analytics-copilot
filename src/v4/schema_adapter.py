@@ -3,63 +3,86 @@ from typing import Dict, List
 
 
 class SchemaValidationError(Exception):
-    """Raised when required canonical fields are missing."""
+    """Raised when canonical schema requirements are violated."""
     pass
 
 
 def build_canonical_dataframe(
     df: pd.DataFrame,
-    confirmed_mappings: Dict[str, any]
+    confirmed_mappings: Dict[str, any],
+    active_measure: str
 ) -> pd.DataFrame:
     """
-    Build a canonical dataframe based on confirmed semantic mappings.
+    Build a canonical dataframe using a single active measure.
 
     Canonical columns:
-    - measure        (required)
-    - dimensions[]   (optional)
+    - measure        (required, exactly one at runtime)
     - entity         (optional)
     - time           (optional)
+    - dimension_1..N (optional)
 
-    Returns:
-        pd.DataFrame with renamed canonical columns
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Raw dataset
+    confirmed_mappings : dict
+        Output of human-confirmed semantic mappings
+    active_measure : str
+        One of the confirmed measure columns to analyze
+
+    Returns
+    -------
+    pd.DataFrame
+        Canonical dataframe
     """
 
     # -----------------------
-    # Validate required field
+    # Validate measures
     # -----------------------
-    if not confirmed_mappings.get("measure"):
+    measures: List[str] = confirmed_mappings.get("measures", [])
+
+    if not measures:
         raise SchemaValidationError(
-            "Missing required canonical field: measure"
+            "No measures confirmed. At least one numeric measure is required."
         )
 
+    if active_measure not in measures:
+        raise SchemaValidationError(
+            f"Active measure '{active_measure}' is not in confirmed measures: {measures}"
+        )
+
+    # -----------------------
+    # Build canonical DF
+    # -----------------------
     canonical_df = pd.DataFrame()
 
-    # -----------------------
-    # Measure (required)
-    # -----------------------
-    measure_col = confirmed_mappings["measure"]
-    canonical_df["measure"] = df[measure_col]
+    # ---- Measure (required, singular) ----
+    canonical_df["measure"] = df[active_measure]
 
-    # -----------------------
-    # Entity (optional)
-    # -----------------------
-    if confirmed_mappings.get("entity"):
-        entity_col = confirmed_mappings["entity"]
+    # ---- Entity (optional) ----
+    entity_col = confirmed_mappings.get("entity")
+    if entity_col:
         canonical_df["entity"] = df[entity_col]
 
-    # -----------------------
-    # Time (optional)
-    # -----------------------
-    if confirmed_mappings.get("time"):
-        time_col = confirmed_mappings["time"]
-        canonical_df["time"] = pd.to_datetime(df[time_col], errors="coerce")
+    # ---- Time (optional) ----
+    time_col = confirmed_mappings.get("time")
+    if time_col:
+        canonical_df["time"] = pd.to_datetime(
+            df[time_col], errors="coerce"
+        )
 
-    # -----------------------
-    # Dimensions (0..N)
-    # -----------------------
+    # ---- Dimensions (0..N) ----
     dimensions: List[str] = confirmed_mappings.get("dimensions", [])
 
     for idx, dim_col in enumerate(dimensions):
-        canonical_df[f"dimension_{idx+1}"] = df[dim_col]
+        canonical_df[f"dimension_{idx + 1}"] = df[dim_col]
+
+    # -----------------------
+    # Final sanity checks
+    # -----------------------
+    if canonical_df["measure"].isna().all():
+        raise SchemaValidationError(
+            "Active measure column contains only null values."
+        )
 
     return canonical_df
