@@ -5,6 +5,7 @@ from src.v3.system_reasoner import reason_about_system
 
 from src.v3.schema_adapter import adapt_dataframe, SchemaValidationError
 
+from src.v4.schema_adapter import build_canonical_dataframe, SchemaValidationError
 
 from src.utils.data_inspector import inspect_dataset
 from src.explanation.suggestions import generate_suggestions
@@ -72,9 +73,10 @@ def main():
     print_header("V3 CONFIRMED MAPPINGS")
     for k, v in final_mapping.items():
         print(f"{k} -> {v}")
-    try:
-            canonical_df = adapt_dataframe(df, final_mapping)
-            print_header("V3 CANONICAL DATAFRAME")
+        try:
+            canonical_df = build_canonical_dataframe(df, confirmed_mappings)
+
+            print_header("V4 CANONICAL DATAFRAME")
             print(canonical_df.head())
             system_reasoning = reason_about_system(canonical_df, final_mapping)
 
@@ -97,10 +99,21 @@ def main():
             for r in system_reasoning["risks"]:
                 print(f"⚠ {r}")
 
-    except SchemaValidationError as e:
+        except SchemaValidationError as e:
             print_header("SCHEMA VALIDATION ERROR")
             print(str(e))
             return
+
+    # try:
+    #         canonical_df = adapt_dataframe(df, final_mapping)
+    #         print_header("V3 CANONICAL DATAFRAME")
+    #         print(canonical_df.head())
+            
+
+    # except SchemaValidationError as e:
+    #         print_header("SCHEMA VALIDATION ERROR")
+    #         print(str(e))
+    #         return
     # -----------------------------
     # V2.1: Data inspection
     # -----------------------------
