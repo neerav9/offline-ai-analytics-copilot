@@ -2,13 +2,9 @@ import pandas as pd
 from typing import List
 
 # -----------------------------
-# V3 (signals only)
+# Imports (V4)
 # -----------------------------
 from src.v3.schema_extractor import extract_schema
-
-# -----------------------------
-# V4 core
-# -----------------------------
 from src.v4.semantic_mapper import propose_mappings, confirm_mappings
 from src.v4.schema_adapter import build_canonical_dataframe, SchemaValidationError
 from src.v4.system_reasoner import reason_about_capabilities
@@ -18,12 +14,11 @@ from src.v4.analytics_engine import (
     run_trend,
     run_compare,
 )
-
 from src.explanation.explainer import explain
 
 
 # --------------------------------------------------
-# Utility
+# Utilities
 # --------------------------------------------------
 
 def print_header(title: str):
@@ -38,7 +33,7 @@ def load_dataset(path: str) -> pd.DataFrame:
 
 def select_active_measure(measures: List[str]) -> str:
     """
-    Let user choose the active measure at runtime.
+    Let user select the active measure at runtime.
     """
     print_header("SELECT ACTIVE MEASURE")
 
@@ -53,17 +48,17 @@ def select_active_measure(measures: List[str]) -> str:
         except ValueError:
             pass
 
-        print("Invalid selection. Try again.")
+        print("Invalid selection. Please try again.")
 
 
 # --------------------------------------------------
-# Main
+# Main entry
 # --------------------------------------------------
 
 def main():
     """
     Offline AI Analytics Copilot — V4.2
-    Runtime measure switching without re-confirmation.
+    Zero-rebuild, schema-driven analytics.
     """
 
     # -----------------------------
@@ -73,7 +68,7 @@ def main():
     df = load_dataset(dataset_path)
 
     # -----------------------------
-    # Schema extraction (signals)
+    # Schema extraction
     # -----------------------------
     schema_report = extract_schema(df)
 
@@ -82,7 +77,7 @@ def main():
         print(f"{col}: {info}")
 
     # -----------------------------
-    # Semantic mapping (ONCE)
+    # Semantic mapping (V4.1)
     # -----------------------------
     proposals = propose_mappings(schema_report)
 
@@ -95,13 +90,16 @@ def main():
     # -----------------------------
     confirmed = confirm_mappings(proposals)
 
+    print_header("CONFIRMED MAPPINGS")
+    for k, v in confirmed.items():
+        print(f"{k} -> {v}")
+
     # -----------------------------
     # Active measure selection
     # -----------------------------
     measures = confirmed.get("measures", [])
     if not measures:
-        print_header("SCHEMA VALIDATION ERROR")
-        print("No valid measure candidates confirmed.")
+        print("No numeric measures available. Exiting.")
         return
 
     active_measure = select_active_measure(measures)
@@ -111,12 +109,12 @@ def main():
     print(active_measure)
 
     # -----------------------------
-    # Canonical dataframe build
+    # Canonical dataframe (BUILD ONCE)
     # -----------------------------
     try:
         canonical_df = build_canonical_dataframe(
-            df,
-            confirmed,
+            df=df,
+            confirmed_mappings=confirmed,
             active_measure=active_measure
         )
     except SchemaValidationError as e:
@@ -128,7 +126,7 @@ def main():
     print(canonical_df.head())
 
     # -----------------------------
-    # Capability reasoning
+    # Capability reasoning (MEASURE-INDEPENDENT)
     # -----------------------------
     capabilities = reason_about_capabilities(canonical_df)
 
@@ -143,17 +141,20 @@ def main():
     for a, reason in capabilities["disabled"].items():
         print(f"✗ {a} — {reason}")
 
-    print("\nAssumptions:")
-    for a in capabilities["assumptions"]:
-        print(f"• {a}")
+    if capabilities["assumptions"]:
+        print("\nAssumptions:")
+        for a in capabilities["assumptions"]:
+            print(f"• {a}")
 
-    print("\nRisks:")
-    for r in capabilities["risks"]:
-        print(f"⚠ {r}")
+    if capabilities["risks"]:
+        print("\nRisks:")
+        for r in capabilities["risks"]:
+            print(f"⚠ {r}")
 
-    # -----------------------------
-    # Guided analytics loop
-    # -----------------------------
+    # --------------------------------------------------
+    # Guided analytics loop (ZERO REBUILD)
+    # --------------------------------------------------
+
     while True:
         print_header("AVAILABLE ANALYSES")
 
@@ -162,7 +163,6 @@ def main():
 
         for idx, name in options.items():
             print(f"{idx}. {name}")
-
         print("9. Switch measure")
         print("0. Exit")
 
@@ -172,31 +172,23 @@ def main():
             print("Invalid input.")
             continue
 
-        # Exit
         if choice == 0:
             print("\nExiting. Goodbye.")
             break
 
-        # Runtime measure switch (NO reconfirmation)
+        # -----------------------------
+        # Runtime measure switch (NO rebuild)
+        # -----------------------------
         if choice == 9:
             active_measure = select_active_measure(measures)
-            confirmed["active_measure"] = active_measure
-
-            canonical_df = build_canonical_dataframe(
-                df,
-                confirmed,
-                active_measure=active_measure
-            )
-
-            capabilities = reason_about_capabilities(canonical_df)
-
-            print_header("MEASURE SWITCHED")
-            print(f"Active measure: {active_measure}")
+            canonical_df["measure"] = df[active_measure]
+            print_header("ACTIVE MEASURE UPDATED")
+            print(active_measure)
             continue
 
         intent = options.get(choice)
         if not intent:
-            print("Invalid choice.")
+            print("Invalid selection.")
             continue
 
         # -----------------------------

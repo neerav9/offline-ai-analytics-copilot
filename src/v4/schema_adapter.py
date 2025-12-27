@@ -1,87 +1,73 @@
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 class SchemaValidationError(Exception):
-    """Raised when canonical schema requirements are violated."""
+    """Raised when required canonical fields are missing or invalid."""
     pass
 
 
 def build_canonical_dataframe(
     df: pd.DataFrame,
-    confirmed_mappings: Dict[str, any],
-    active_measure: str,
+    confirmed_mappings: Dict,
+    active_measure: str
 ) -> pd.DataFrame:
     """
-    Build a canonical dataframe using a runtime-selected active measure.
+    Build canonical dataframe using a runtime-selected active measure.
 
-    This function is:
-    - Stateless
-    - Deterministic
-    - Safe to call multiple times
-
-    Canonical columns produced:
-    - measure        (required, runtime-selected)
+    Canonical columns:
+    - measure        (required, selected at runtime)
     - entity         (optional)
     - time           (optional)
     - dimension_1..N (optional)
+
+    Parameters:
+        df: original dataframe
+        confirmed_mappings: output of semantic mapper (measures, entity, time, dimensions)
+        active_measure: selected measure column name
+
+    Returns:
+        Canonical pandas DataFrame
     """
 
-    # -----------------------------
-    # Validate inputs
-    # -----------------------------
-
-    if not active_measure:
-        raise SchemaValidationError("Active measure is not specified.")
-
     measures: List[str] = confirmed_mappings.get("measures", [])
+
+    if not measures:
+        raise SchemaValidationError("No measures confirmed.")
+
     if active_measure not in measures:
         raise SchemaValidationError(
-            f"Active measure '{active_measure}' was not confirmed earlier."
+            f"Active measure '{active_measure}' not in confirmed measures: {measures}"
         )
-
-    if active_measure not in df.columns:
-        raise SchemaValidationError(
-            f"Active measure column '{active_measure}' does not exist in dataset."
-        )
-
-    # -----------------------------
-    # Build canonical dataframe
-    # -----------------------------
 
     canonical_df = pd.DataFrame()
 
-    # ---- Measure (required) ----
+    # -----------------------
+    # Measure (required)
+    # -----------------------
     canonical_df["measure"] = df[active_measure]
 
-    # ---- Entity (optional) ----
-    entity_col: Optional[str] = confirmed_mappings.get("entity")
-    if entity_col:
-        if entity_col not in df.columns:
-            raise SchemaValidationError(
-                f"Entity column '{entity_col}' not found in dataset."
-            )
-        canonical_df["entity"] = df[entity_col]
+    # -----------------------
+    # Entity (optional)
+    # -----------------------
+    if confirmed_mappings.get("entity"):
+        canonical_df["entity"] = df[confirmed_mappings["entity"]]
 
-    # ---- Time (optional) ----
-    time_col: Optional[str] = confirmed_mappings.get("time")
-    if time_col:
-        if time_col not in df.columns:
-            raise SchemaValidationError(
-                f"Time column '{time_col}' not found in dataset."
-            )
+    # -----------------------
+    # Time (optional)
+    # -----------------------
+    if confirmed_mappings.get("time"):
         canonical_df["time"] = pd.to_datetime(
-            df[time_col], errors="coerce"
+            df[confirmed_mappings["time"]],
+            errors="coerce"
         )
 
-    # ---- Dimensions (0..N) ----
-    dimensions: List[str] = confirmed_mappings.get("dimensions", [])
+    # -----------------------
+    # Dimensions (0..N)
+    # -----------------------
+    dimensions = confirmed_mappings.get("dimensions", [])
 
-    for idx, dim_col in enumerate(dimensions):
-        if dim_col not in df.columns:
-            raise SchemaValidationError(
-                f"Dimension column '{dim_col}' not found in dataset."
-            )
-        canonical_df[f"dimension_{idx + 1}"] = df[dim_col]
+    for idx, dim in enumerate(dimensions, start=1):
+        canonical_df[f"dimension_{idx}"] = df[dim]
 
     return canonical_df

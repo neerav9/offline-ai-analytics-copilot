@@ -1,93 +1,103 @@
 import pandas as pd
-from typing import Dict, Any, List
+from typing import Dict
 
 
-# --------------------------------------------------
+# -----------------------------
 # SUMMARY
-# --------------------------------------------------
+# -----------------------------
 
-def run_summary(df: pd.DataFrame) -> Dict[str, Any]:
+def run_summary(canonical_df: pd.DataFrame) -> Dict:
     """
-    Compute a safe summary over the active measure.
+    Compute summary statistics for the active measure.
     """
-    result = {}
+    if "measure" not in canonical_df.columns:
+        return {}
 
-    if "measure" not in df.columns:
-        return result
+    result = {
+        "total_measure": float(canonical_df["measure"].sum())
+    }
 
-    result["total_measure"] = float(df["measure"].sum())
-
-    if "entity" in df.columns:
-        result["entity_count"] = df["entity"].nunique()
+    if "entity" in canonical_df.columns:
+        result["entity_count"] = canonical_df["entity"].nunique()
 
     return result
 
 
-# --------------------------------------------------
+# -----------------------------
 # RANK
-# --------------------------------------------------
+# -----------------------------
 
-def run_rank(df: pd.DataFrame) -> Dict[str, Any]:
+def run_rank(canonical_df: pd.DataFrame) -> Dict:
     """
     Rank entities by the active measure.
     """
-    if "entity" not in df.columns:
-        raise ValueError("Ranking requires an entity column.")
+    if "measure" not in canonical_df.columns or "entity" not in canonical_df.columns:
+        return {}
 
     ranking = (
-        df.groupby("entity")["measure"]
+        canonical_df
+        .groupby("entity", dropna=False)["measure"]
         .sum()
         .sort_values(ascending=False)
-        .to_dict()
     )
 
-    return {"ranking": ranking}
+    return {
+        "ranking": ranking.to_dict()
+    }
 
 
-# --------------------------------------------------
+# -----------------------------
 # TREND
-# --------------------------------------------------
+# -----------------------------
 
-def run_trend(df: pd.DataFrame) -> Dict[str, Any]:
+def run_trend(canonical_df: pd.DataFrame) -> Dict:
     """
-    Aggregate measure over time.
+    Compute trend of the active measure over time.
     """
-    if "time" not in df.columns:
-        raise ValueError("Trend analysis requires a time column.")
+    if "measure" not in canonical_df.columns or "time" not in canonical_df.columns:
+        return {}
 
     trend = (
-        df.groupby("time")["measure"]
+        canonical_df
+        .groupby("time", dropna=False)["measure"]
         .sum()
         .sort_index()
-        .to_dict()
     )
 
-    return {"trend": trend}
+    return {
+        "trend": trend.to_dict()
+    }
 
 
-# --------------------------------------------------
+# -----------------------------
 # COMPARE
-# --------------------------------------------------
+# -----------------------------
 
-def run_compare(df: pd.DataFrame) -> Dict[str, Any]:
+def run_compare(canonical_df: pd.DataFrame) -> Dict:
     """
-    Compare measure across all available dimensions.
+    Compare active measure across available dimensions.
     """
-    dimensions: List[str] = [
-        c for c in df.columns if c.startswith("dimension_")
+    if "measure" not in canonical_df.columns:
+        return {}
+
+    dimension_cols = [
+        c for c in canonical_df.columns if c.startswith("dimension_")
     ]
 
-    if not dimensions:
-        raise ValueError("Comparison requires at least one dimension.")
+    if not dimension_cols:
+        return {}
 
     comparisons = {}
 
-    for dim in dimensions:
-        comparisons[dim] = (
-            df.groupby(dim)["measure"]
+    for dim in dimension_cols:
+        grouped = (
+            canonical_df
+            .groupby(dim, dropna=False)["measure"]
             .sum()
             .sort_values(ascending=False)
-            .to_dict()
         )
+        comparisons[dim] = grouped.to_dict()
 
-    return {"comparison": comparisons}
+    return {
+        "comparisons": comparisons
+    }

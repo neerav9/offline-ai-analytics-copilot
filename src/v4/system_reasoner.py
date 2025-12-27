@@ -1,97 +1,76 @@
-from typing import Dict, List
+from typing import Dict
 import pandas as pd
 
 
-def reason_about_capabilities(canonical_df: pd.DataFrame) -> Dict[str, any]:
+def reason_about_capabilities(canonical_df: pd.DataFrame) -> Dict:
     """
-    Determine which analytics are safe to run based on the canonical dataframe.
+    Determine which analytics are safe based on the canonical dataframe.
+    Canonical truth:
+    - 'measure' column = active numeric measure
+    - 'entity' optional
+    - 'time' optional
+    - 'dimension_*' optional
+    """
 
-    This function is:
-    - Stateless
-    - Deterministic
-    - Measure-agnostic
+    enabled = []
+    disabled = {}
+    assumptions = []
+    risks = []
 
-    Returns:
-        {
-            enabled: List[str],
-            disabled: Dict[str, str],
-            assumptions: List[str],
-            risks: List[str],
+    # -----------------------------
+    # Measure existence (CRITICAL)
+    # -----------------------------
+    if "measure" not in canonical_df.columns:
+        disabled["summary"] = "No active measure selected"
+        disabled["rank"] = "No active measure selected"
+        disabled["trend"] = "No active measure selected"
+        disabled["compare"] = "No active measure selected"
+        risks.append("No measurable numeric field available")
+        return {
+            "enabled": enabled,
+            "disabled": disabled,
+            "assumptions": assumptions,
+            "risks": risks,
         }
-    """
-
-    enabled: List[str] = []
-    disabled: Dict[str, str] = {}
-    assumptions: List[str] = []
-    risks: List[str] = []
-
-    columns = set(canonical_df.columns)
-
-    has_measure = "measure" in columns
-    has_entity = "entity" in columns
-    has_time = "time" in columns
-    has_dimension = any(c.startswith("dimension_") for c in columns)
 
     # -----------------------------
     # SUMMARY
     # -----------------------------
-    if has_measure:
-        enabled.append("summary")
-    else:
-        disabled["summary"] = "Required canonical field missing: measure"
+    enabled.append("summary")
 
     # -----------------------------
     # RANK
     # -----------------------------
-    if has_measure and has_entity:
+    if "entity" in canonical_df.columns:
         enabled.append("rank")
     else:
-        disabled["rank"] = "Requires both measure and entity"
+        disabled["rank"] = "Entity field not available"
 
     # -----------------------------
     # TREND
     # -----------------------------
-    if has_measure and has_time:
+    if "time" in canonical_df.columns:
         enabled.append("trend")
 
-        unique_times = canonical_df["time"].nunique(dropna=True)
-        if unique_times <= 1:
-            risks.append(
-                "Single time value limits trend depth"
-            )
+        if canonical_df["time"].nunique() <= 1:
+            risks.append("Single time value limits trend depth")
     else:
-        disabled["trend"] = "Requires both measure and time"
+        disabled["trend"] = "Time field not available"
 
     # -----------------------------
     # COMPARE
     # -----------------------------
-    if has_measure and has_dimension:
+    dimension_cols = [c for c in canonical_df.columns if c.startswith("dimension_")]
+
+    if dimension_cols:
         enabled.append("compare")
     else:
-        disabled["compare"] = "Requires measure and at least one dimension"
+        disabled["compare"] = "No categorical dimensions available"
 
     # -----------------------------
     # Assumptions
     # -----------------------------
-    if has_measure:
-        assumptions.append(
-            "Measure values are comparable across records"
-        )
-
-    if has_entity:
-        assumptions.append(
-            "Each entity represents a distinct comparable unit"
-        )
-
-    # -----------------------------
-    # Data quality risks
-    # -----------------------------
-    if has_measure:
-        variance = canonical_df["measure"].var()
-        if variance is not None and variance == 0:
-            risks.append(
-                "Zero variance in measure reduces analytical usefulness"
-            )
+    assumptions.append("Measure values are comparable across records")
 
     return {
         "enabled": enabled,

@@ -1,201 +1,185 @@
 from typing import Dict, Any, List
 
+from src.v4.semantic_advisor import semantic_hint
+
 
 """
-V4.1 Semantic Mapper
+V4.3 Semantic Mapper (HF-Augmented)
 
 Purpose:
-Detect analytics primitives from an unknown dataset.
-
-Canonical primitives:
-- measures[]     (numeric, multiple allowed)
-- entity         (categorical, optional)
-- time           (date, optional)
-- dimensions[]   (categorical, optional)
-
-All mappings are PROPOSALS and require human confirmation.
-Deterministic, explainable, offline-safe.
+- Detect multiple candidate measures
+- Detect entity, time, dimensions
+- Use HF as an advisory signal ONLY
+- Keep system deterministic + explainable
 """
 
 
-# ----------------------------------
-# Keyword hints (domain-agnostic)
-# ----------------------------------
+# -------------------------------
+# Thresholds (explicit + safe)
+# -------------------------------
 
-KEYWORD_HINTS = {
-    "measure": [
-        "total", "amount", "value", "score", "marks", "points", "count", "sum"
-    ],
-    "entity": [
-        "name", "id", "student", "employee", "customer", "user", "person"
-    ],
-    "time": [
-        "date", "time", "year", "month", "day"
-    ],
-    "dimension": [
-        "region", "category", "type", "subject", "department", "class", "group"
-    ],
-}
+MEASURE_SCORE_THRESHOLD = 0.6
+ENTITY_SCORE_THRESHOLD = 0.4
+TIME_SCORE_THRESHOLD = 0.4
+DIMENSION_SCORE_THRESHOLD = 0.3
 
 
-# ----------------------------------
-# Scoring helpers
-# ----------------------------------
+# -------------------------------
+# Deterministic scorers
+# -------------------------------
 
-def score_name_match(column_name: str, target: str) -> float:
-    name = column_name.lower()
-    for kw in KEYWORD_HINTS.get(target, []):
-        if kw in name:
-            return 0.4
-    return 0.0
-
-
-def score_type_match(column_type: str, target: str) -> float:
-    if target == "measure" and column_type == "numeric":
-        return 0.4
-    if target in ["entity", "dimension"] and column_type == "categorical":
-        return 0.3
-    if target == "time" and column_type == "date":
-        return 0.4
-    return 0.0
-
-
-def score_numeric_behavior(signals: Dict[str, Any]) -> float:
-    if not signals:
-        return 0.0
-
+def score_numeric_measure(info: Dict[str, Any]) -> float:
     score = 0.0
 
+    if info["type"] == "numeric":
+        score += 0.4
+
+    signals = info.get("signals", {})
     if signals.get("unique_count", 0) > 3:
         score += 0.2
 
     if signals.get("max", 0) > signals.get("mean", 0):
         score += 0.2
 
-    return score
+    return round(score, 2)
 
 
-# ----------------------------------
-# Proposal initialization
-# ----------------------------------
+def score_entity(column: str, info: Dict[str, Any]) -> float:
+    score = 0.0
+    name = column.lower()
 
-def initialize_proposals() -> Dict[str, Any]:
-    return {
-        "measures": [],      # ← MULTI-MEASURE
-        "entity": None,
-        "time": None,
-        "dimensions": []
-    }
+    if info["type"] == "categorical":
+        score += 0.3
+
+    if any(k in name for k in ["name", "student", "user", "employee", "person"]):
+        score += 0.3
+
+    return round(score, 2)
 
 
-# ----------------------------------
-# Core proposal logic
-# ----------------------------------
+def score_time(column: str, info: Dict[str, Any]) -> float:
+    score = 0.0
+    name = column.lower()
+
+    if info["type"] == "date":
+        score += 0.4
+
+    if any(k in name for k in ["date", "time", "year", "month"]):
+        score += 0.2
+
+    return round(score, 2)
+
+
+def score_dimension(column: str, info: Dict[str, Any]) -> float:
+    score = 0.0
+    name = column.lower()
+
+    if info["type"] == "categorical":
+        score += 0.2
+
+    if any(k in name for k in ["category", "subject", "region", "type", "group"]):
+        score += 0.2
+
+    return round(score, 2)
+
+
+# -------------------------------
+# Proposal generation
+# -------------------------------
 
 def propose_mappings(schema_report: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generate semantic mapping proposals using deterministic heuristics.
-    """
-    proposals = initialize_proposals()
+    proposals = {
+        "measures": [],
+        "entity": None,
+        "time": None,
+        "dimensions": [],
+    }
 
     for column, info in schema_report.items():
-        col_type = info["type"]
-        signals = info.get("signals", {})
 
-        # -----------------------
-        # MEASURE (multiple)
-        # -----------------------
-        if col_type == "numeric":
-            score = 0.0
-            evidence = []
+        # ---- Measure candidates ----
+        m_score = score_numeric_measure(info)
+        if m_score >= MEASURE_SCORE_THRESHOLD:
+            hf = semantic_hint(column)
+            proposals["measures"].append({
+                "column": column,
+                "confidence": m_score,
+                "evidence": ["numeric_type", "numeric_behavior"],
+                "hf_hint": hf
+            })
 
-            s = score_type_match(col_type, "measure")
-            if s:
-                score += s
-                evidence.append("numeric_type")
-
-            s = score_name_match(column, "measure")
-            if s:
-                score += s
-                evidence.append("name_signal")
-
-            s = score_numeric_behavior(signals)
-            if s:
-                score += s
-                evidence.append("numeric_behavior")
-
-            if score >= 0.6:
-                proposals["measures"].append({
-                    "column": column,
-                    "confidence": round(score, 2),
-                    "evidence": evidence
-                })
-                continue
-
-        # -----------------------
-        # TIME
-        # -----------------------
-        if col_type == "date" and proposals["time"] is None:
-            score = score_type_match(col_type, "time") + score_name_match(column, "time")
-
-            if score >= 0.4:
-                proposals["time"] = {
-                    "column": column,
-                    "confidence": round(score, 2),
-                    "evidence": ["date_type"]
-                }
-                continue
-
-        # -----------------------
-        # ENTITY
-        # -----------------------
-        if col_type == "categorical" and proposals["entity"] is None:
-            score = score_type_match(col_type, "entity") + score_name_match(column, "entity")
-
-            if score >= 0.4:
+        # ---- Entity ----
+        if proposals["entity"] is None:
+            e_score = score_entity(column, info)
+            if e_score >= ENTITY_SCORE_THRESHOLD:
+                hf = semantic_hint(column)
                 proposals["entity"] = {
                     "column": column,
-                    "confidence": round(score, 2),
-                    "evidence": ["entity_signal"]
+                    "confidence": e_score,
+                    "evidence": ["entity_signal"],
+                    "hf_hint": hf
                 }
-                continue
 
-        # -----------------------
-        # DIMENSIONS (multiple)
-        # -----------------------
-        if col_type == "categorical":
-            score = score_type_match(col_type, "dimension") + score_name_match(column, "dimension")
-
-            if score >= 0.3:
-                proposals["dimensions"].append({
+        # ---- Time ----
+        if proposals["time"] is None:
+            t_score = score_time(column, info)
+            if t_score >= TIME_SCORE_THRESHOLD:
+                hf = semantic_hint(column)
+                proposals["time"] = {
                     "column": column,
-                    "confidence": round(score, 2),
-                    "evidence": ["categorical_dimension"]
-                })
+                    "confidence": t_score,
+                    "evidence": ["date_type"],
+                    "hf_hint": hf
+                }
+
+        # ---- Dimensions ----
+        d_score = score_dimension(column, info)
+        if d_score >= DIMENSION_SCORE_THRESHOLD:
+            hf = semantic_hint(column)
+            proposals["dimensions"].append({
+                "column": column,
+                "confidence": d_score,
+                "evidence": ["categorical_grouping"],
+                "hf_hint": hf
+            })
+        # ----------------------------------
+        # HF-aware ranking of measure candidates
+        # ----------------------------------
+
+        def ranking_score(m):
+            hf_conf = 0.0
+            if m.get("hf_hint") and m["hf_hint"].get("confidence") is not None:
+                hf_conf = m["hf_hint"]["confidence"]
+
+            return round(
+                (m["confidence"] * 0.7) + (hf_conf * 0.3),
+                3
+            )
+
+        proposals["measures"] = sorted(
+            proposals["measures"],
+            key=ranking_score,
+            reverse=True
+        )
 
     return proposals
 
 
-# ----------------------------------
+# -------------------------------
 # Human confirmation
-# ----------------------------------
+# -------------------------------
 
 def confirm_mappings(proposed: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Human-in-the-loop confirmation of semantic mappings.
-    """
     confirmed = {
         "measures": [],
         "entity": None,
         "time": None,
-        "dimensions": []
+        "dimensions": [],
     }
 
     print("\n=== HUMAN CONFIRMATION REQUIRED ===\n")
 
-    # -----------------------
-    # MEASURES
-    # -----------------------
+    # ---- Measures ----
     for m in proposed.get("measures", []):
         print("-" * 40)
         print("Canonical field : measure")
@@ -203,13 +187,15 @@ def confirm_mappings(proposed: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Confidence      : {m['confidence']}")
         print(f"Evidence        : {', '.join(m['evidence'])}")
 
+        hf = m.get("hf_hint", {})
+        if hf.get("suggestion"):
+            print(f"HF suggestion   : {hf['suggestion']} (confidence: {hf['confidence']})")
+
         decision = input("Accept as measure? (y/n): ").strip().lower()
         if decision == "y":
             confirmed["measures"].append(m["column"])
 
-    # -----------------------
-    # ENTITY
-    # -----------------------
+    # ---- Entity ----
     if proposed.get("entity"):
         e = proposed["entity"]
         print("-" * 40)
@@ -218,12 +204,14 @@ def confirm_mappings(proposed: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Confidence      : {e['confidence']}")
         print(f"Evidence        : {', '.join(e['evidence'])}")
 
+        hf = e.get("hf_hint", {})
+        if hf.get("suggestion"):
+            print(f"HF suggestion   : {hf['suggestion']} (confidence: {hf['confidence']})")
+
         if input("Accept entity? (y/n): ").strip().lower() == "y":
             confirmed["entity"] = e["column"]
 
-    # -----------------------
-    # TIME
-    # -----------------------
+    # ---- Time ----
     if proposed.get("time"):
         t = proposed["time"]
         print("-" * 40)
@@ -232,12 +220,14 @@ def confirm_mappings(proposed: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Confidence      : {t['confidence']}")
         print(f"Evidence        : {', '.join(t['evidence'])}")
 
+        hf = t.get("hf_hint", {})
+        if hf.get("suggestion"):
+            print(f"HF suggestion   : {hf['suggestion']} (confidence: {hf['confidence']})")
+
         if input("Accept time? (y/n): ").strip().lower() == "y":
             confirmed["time"] = t["column"]
 
-    # -----------------------
-    # DIMENSIONS
-    # -----------------------
+    # ---- Dimensions ----
     for d in proposed.get("dimensions", []):
         print("-" * 40)
         print("Canonical field : dimension")
@@ -245,7 +235,11 @@ def confirm_mappings(proposed: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Confidence      : {d['confidence']}")
         print(f"Evidence        : {', '.join(d['evidence'])}")
 
-        if input("Accept dimension? (y/n): ").strip().lower() == "y":
+        hf = d.get("hf_hint", {})
+        if hf.get("suggestion"):
+            print(f"HF suggestion   : {hf['suggestion']} (confidence: {hf['confidence']})")
+
+        if input("Accept as dimension? (y/n): ").strip().lower() == "y":
             confirmed["dimensions"].append(d["column"])
 
     return confirmed
