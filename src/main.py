@@ -1,31 +1,34 @@
 import pandas as pd
 
-from src.v3.human_confirmation import confirm_mappings
-from src.v3.system_reasoner import reason_about_system
+from src.v3.schema_extractor import extract_schema
 
-from src.v3.schema_adapter import adapt_dataframe, SchemaValidationError
-
+from src.v4.semantic_mapper import propose_mappings, confirm_mappings
 from src.v4.schema_adapter import build_canonical_dataframe, SchemaValidationError
-
-from src.utils.data_inspector import inspect_dataset
-from src.explanation.suggestions import generate_suggestions
-from src.explanation.guided_analytics import (
-    available_analyses,
-    map_choice_to_intent,
-)
-from src.core.analytics_engine import (
+from src.v4.system_reasoner import reason_about_capabilities
+from src.v4.analytics_engine import (
     run_summary,
-    run_trend,
-    run_compare,
     run_rank,
+    run_compare,
+    run_trend,
 )
+
 from src.explanation.explainer import explain
 
-# V3 imports
-from src.v3.schema_extractor import extract_schema
-from src.v3.semantic_mapper import propose_mappings
+
+# -----------------------------
+# V4 Intent Adapter
+# -----------------------------
+INTENT_MAP = {
+    "summary": "SUMMARY",
+    "rank": "RANK",
+    "trend": "TREND",
+    "compare": "COMPARE",
+}
 
 
+# -----------------------------
+# Utilities
+# -----------------------------
 def print_header(title: str):
     print("\n" + "=" * 50)
     print(title.upper())
@@ -36,9 +39,13 @@ def load_dataset(path: str) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+# -----------------------------
+# Main
+# -----------------------------
 def main():
     """
-    Entry point for the Offline AI Analytics Copilot (V3).
+    Offline AI Analytics Copilot — V4
+    Schema-driven, capability-gated analytics.
     """
 
     # -----------------------------
@@ -48,134 +55,131 @@ def main():
     df = load_dataset(dataset_path)
 
     # -----------------------------
-    # V3.2: Extract dataset schema
+    # Schema extraction
     # -----------------------------
     schema_report = extract_schema(df)
 
-    print_header("V3 DATASET SCHEMA SIGNALS")
+    print_header("DATASET SCHEMA SIGNALS")
     for col, info in schema_report.items():
         print(f"{col}: {info}")
 
     # -----------------------------
-    # V3.3: Semantic mapping
+    # Semantic mapping
     # -----------------------------
-    mappings = propose_mappings(schema_report)
+    proposals = propose_mappings(schema_report)
 
-    print_header("V3 SEMANTIC MAPPING PROPOSALS")
-    for field, info in mappings.items():
-        print(f"{field} -> {info}")
-    # -----------------------------
-    # V3.4: Human confirmation
-    # -----------------------------
-    final_mapping = confirm_mappings(mappings)
-
-    
-    print_header("V3 CONFIRMED MAPPINGS")
-    for k, v in final_mapping.items():
+    print_header("SEMANTIC MAPPING PROPOSALS")
+    for k, v in proposals.items():
         print(f"{k} -> {v}")
-        try:
-            canonical_df = build_canonical_dataframe(df, confirmed_mappings)
-
-            print_header("V4 CANONICAL DATAFRAME")
-            print(canonical_df.head())
-            system_reasoning = reason_about_system(canonical_df, final_mapping)
-
-            print_header("SYSTEM REASONING (V3.9)")
-            print(f"Dataset shape: {system_reasoning['dataset_shape']}")
-
-            print("\nEnabled analyses:")
-            for a in system_reasoning["enabled_analyses"]:
-                print(f"✓ {a}")
-
-            print("\nDisabled analyses:")
-            for a, reason in system_reasoning["disabled_analyses"].items():
-                print(f"✗ {a} — {reason}")
-
-            print("\nAssumptions:")
-            for a in system_reasoning["assumptions"]:
-                print(f"• {a}")
-
-            print("\nRisks:")
-            for r in system_reasoning["risks"]:
-                print(f"⚠ {r}")
-
-        except SchemaValidationError as e:
-            print_header("SCHEMA VALIDATION ERROR")
-            print(str(e))
-            return
-
-    # try:
-    #         canonical_df = adapt_dataframe(df, final_mapping)
-    #         print_header("V3 CANONICAL DATAFRAME")
-    #         print(canonical_df.head())
-            
-
-    # except SchemaValidationError as e:
-    #         print_header("SCHEMA VALIDATION ERROR")
-    #         print(str(e))
-    #         return
-    # -----------------------------
-    # V2.1: Data inspection
-    # -----------------------------
-    inspection_report = inspect_dataset(df, key_column="order_id")
-
-    print_header("DATA INSPECTION REPORT")
-    print(inspection_report)
 
     # -----------------------------
-    # V2.2: AI-assisted suggestions
+    # Human confirmation
     # -----------------------------
-    suggestions = generate_suggestions(inspection_report)
+    confirmed_mappings = confirm_mappings(proposals)
 
-    print_header("AI-ASSISTED SUGGESTIONS")
-    for s in suggestions:
-        print(f"- {s}")
+    print_header("CONFIRMED MAPPINGS")
+    for k, v in confirmed_mappings.items():
+        print(f"{k} -> {v}")
 
     # -----------------------------
-    # V2.3: Guided analytics
+    # Canonical dataframe
+    # -----------------------------
+    try:
+        canonical_df = build_canonical_dataframe(df, confirmed_mappings)
+    except SchemaValidationError as e:
+        print_header("SCHEMA VALIDATION ERROR")
+        print(str(e))
+        return
+
+    print_header("CANONICAL DATAFRAME")
+    print(canonical_df.head())
+
+    # -----------------------------
+    # Capability reasoning
+    # -----------------------------
+    capabilities = reason_about_capabilities(canonical_df)
+
+    print_header("SYSTEM REASONING")
+    print(f"Dataset shape: {canonical_df.shape}")
+
+    print("\nEnabled analyses:")
+    for a in capabilities["enabled"]:
+        print(f"✓ {a}")
+
+    print("\nDisabled analyses:")
+    for a, reason in capabilities["disabled"].items():
+        print(f"✗ {a} — {reason}")
+
+    print("\nAssumptions:")
+    for a in capabilities["assumptions"]:
+        print(f"• {a}")
+
+    print("\nRisks:")
+    for r in capabilities["risks"]:
+        print(f"⚠ {r}")
+
+    # -----------------------------
+    # Guided analytics (capability-gated)
     # -----------------------------
     while True:
-        print_header("GUIDED ANALYTICS OPTIONS")
+        print_header("AVAILABLE ANALYSES")
 
-        options = available_analyses(inspection_report)
-        for idx, text in options:
-            print(f"{idx}. {text}")
+        enabled = capabilities["enabled"]
+        options = {i + 1: name for i, name in enumerate(enabled)}
+
+        for idx, name in options.items():
+            print(f"{idx}. {name}")
+
         print("0. Exit")
 
         try:
-            selected = int(input("\nSelect an option number to proceed: "))
+            choice = int(input("\nSelect an option: "))
         except ValueError:
-            print("Invalid input. Please enter a number.")
+            print("Invalid input.")
             continue
 
-        if selected == 0:
-            print("\nExiting guided analytics. Goodbye!")
+        if choice == 0:
+            print("\nExiting. Goodbye.")
             break
 
-        selected_text = dict(options).get(selected)
-        if not selected_text:
-            print("Invalid selection. Please try again.")
+        selected = options.get(choice)
+        if not selected:
+            print("Invalid choice.")
             continue
 
-        intent_payload = map_choice_to_intent(selected_text)
-        intent = intent_payload["intent"]
+        # 🔑 CRITICAL FIX: map to engine intent
+        intent = INTENT_MAP.get(selected)
 
+        if not intent:
+            print("Unsupported analysis.")
+            continue
+
+        # -----------------------------
+        # Execute analytics
+        # -----------------------------
         if intent == "SUMMARY":
-            analytics_result = run_summary(canonical_df)
-        elif intent == "TREND":
-            analytics_result = run_trend( canonical_df)
-        elif intent == "COMPARE":
-            analytics_result = run_compare(canonical_df, intent_payload["dimension"])
+            result = run_summary(canonical_df)
+
         elif intent == "RANK":
-            analytics_result = run_rank(canonical_df, intent_payload["dimension"])
+            result = run_rank(canonical_df)
+
+        elif intent == "TREND":
+            result = run_trend(canonical_df)
+
+        elif intent == "COMPARE":
+            result = run_compare(
+                canonical_df,
+                [c for c in canonical_df.columns if c.startswith("dimension_")]
+            )
+
         else:
             print("Unsupported analysis.")
             continue
 
-        explanation = explain(intent, analytics_result)
+        explanation = explain(intent, result)
 
         print_header("RESULT")
-        print(analytics_result)
+        print(result)
 
         print_header("EXPLANATION")
         print(explanation)

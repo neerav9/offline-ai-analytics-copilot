@@ -1,111 +1,103 @@
-from typing import Dict
+# src/explanation/explainer.py
+from typing import Dict, Any
 
 
-def explain(intent: str, analytics_result: dict) -> str:
+def explain(intent: str, result: Dict[str, Any]) -> str:
+    """
+    Generate a domain-agnostic explanation for analytics results.
+
+    This explainer is V4-compatible:
+    - No sales-specific language
+    - Uses measure/entity/time abstractions
+    - Safe for unknown datasets
+    """
+
     intent = intent.upper()
 
+    # -------------------------
+    # SUMMARY
+    # -------------------------
     if intent == "SUMMARY":
         parts = []
 
-        if "total_revenue" in analytics_result:
+        total = result.get("total_measure")
+        count = result.get("entity_count")
+
+        if total is not None:
             parts.append(
-                f"Overall, total value is {analytics_result['total_revenue']:.2f}."
+                f"The total value of the selected measure across all records is {total:.2f}."
             )
 
-        if "total_units_sold" in analytics_result:
+        if count is not None:
             parts.append(
-                f"Total units counted: {analytics_result['total_units_sold']}."
+                f"The analysis includes {count} distinct entities."
             )
 
-        if "revenue_by_category" in analytics_result:
-            top_category = max(
-                analytics_result["revenue_by_category"],
-                key=analytics_result["revenue_by_category"].get
-            )
-            parts.append(
-                f"The highest contributing category is {top_category}."
-            )
+        if not parts:
+            return "A summary was computed, but no interpretable metrics were available."
 
-        return " ".join(parts) if parts else "No summary metrics available."
+        return " ".join(parts)
 
+    # -------------------------
+    # RANK
+    # -------------------------
     if intent == "RANK":
-        top_key = next(iter(analytics_result))
-        top_entity = max(analytics_result[top_key], key=analytics_result[top_key].get)
-        return f"The top performer is {top_entity}."
+        ranking = result.get("ranking")
 
-    if intent == "COMPARE":
-        top_key = next(iter(analytics_result))
-        top_category = max(analytics_result[top_key], key=analytics_result[top_key].get)
-        return f"{top_category} has the highest contribution in this comparison."
+        if not ranking:
+            return "Ranking could not be generated due to insufficient data."
 
+        top_entity = next(iter(ranking))
+        top_value = ranking[top_entity]
+
+        return (
+            f"Entities were ranked by the selected measure. "
+            f"The top-ranked entity is {top_entity} with a value of {top_value}."
+        )
+
+    # -------------------------
+    # TREND
+    # -------------------------
     if intent == "TREND":
-        return "Trend analysis completed over the available time range."
+        trend = result.get("trend")
 
-    return "Explanation not available for this analysis."
+        if not trend:
+            return "Trend analysis was attempted, but no time-based variation was available."
 
+        time_points = len(trend)
 
-def explain_summary(result: Dict) -> str:
-    total_revenue = result.get("total_revenue")
-    total_units = result.get("total_units_sold")
-    revenue_by_region = result.get("revenue_by_region", {})
+        if time_points == 1:
+            return (
+                "The trend shows a single time point. "
+                "This limits trend interpretation, but the aggregated value was computed safely."
+            )
 
-    top_region = max(revenue_by_region, key=revenue_by_region.get, default=None)
+        return (
+            f"Trend analysis was performed across {time_points} time points, "
+            "showing how the selected measure evolves over time."
+        )
 
+    # -------------------------
+    # COMPARE
+    # -------------------------
+    if intent == "COMPARE":
+        comparisons = result.get("comparison")
+
+        if not comparisons:
+            return (
+                "Comparison analysis could not be completed because "
+                "no valid categorical dimensions were available."
+            )
+
+        return (
+            "The measure was compared across different categories, "
+            "highlighting relative differences between groups."
+        )
+
+    # -------------------------
+    # FALLBACK
+    # -------------------------
     return (
-        f"Overall, total revenue is {total_revenue:.2f} "
-        f"with {total_units} units sold. "
-        f"The highest contributing region is {top_region}."
-    )
-
-
-def explain_trend(result: Dict) -> str:
-    revenue_over_time = result.get("revenue_over_time", {})
-
-    if not revenue_over_time:
-        return "No trend data is available."
-
-    values = list(revenue_over_time.values())
-    direction = "increased" if values[-1] > values[0] else "decreased"
-
-    return f"Revenue has {direction} over the selected time period."
-
-
-def explain_compare(result: Dict) -> str:
-    key = next(iter(result))
-    comparison = result[key]
-
-    if not comparison:
-        return "No comparison data available."
-
-    best = max(comparison, key=comparison.get)
-
-    return f"{best} has the highest revenue in this comparison."
-
-
-def explain_rank(result: Dict) -> str:
-    key = next(iter(result))
-    ranking = result[key]
-
-    if not ranking:
-        return "No ranking data available."
-
-    top_entity = next(iter(ranking))
-
-    return f"The top performer is {top_entity}."
-
-
-def explain_why(result: Dict) -> str:
-    change = result.get("change_percent")
-    delta_by_region = result.get("delta_by_region", {})
-
-    if change is None or not delta_by_region:
-        return "Insufficient data to explain the change."
-
-    main_driver = min(delta_by_region, key=delta_by_region.get)
-
-    direction = "declined" if change < 0 else "increased"
-
-    return (
-        f"Sales have {direction} by {abs(change):.1f}%. "
-        f"The primary contributor to this change is the {main_driver} region."
+        "The analysis completed successfully, "
+        "but no detailed explanation is available for this operation."
     )
