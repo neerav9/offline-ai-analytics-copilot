@@ -5,8 +5,25 @@ from typing import Dict
 # -----------------------------
 # SUMMARY
 # -----------------------------
+from typing import TypedDict, List
 
-def run_summary(canonical_df: pd.DataFrame) -> Dict:
+
+class SummaryResult(TypedDict):
+    total_measure: float
+    entity_count: int
+
+
+class RankResult(TypedDict):
+    ranking: dict
+
+
+class TrendResult(TypedDict):
+    trend: dict
+class CompareResult(TypedDict):
+    comparison: dict
+
+
+def run_summary(canonical_df: pd.DataFrame) -> SummaryResult:
     """
     Compute summary statistics for the active measure.
     """
@@ -27,7 +44,7 @@ def run_summary(canonical_df: pd.DataFrame) -> Dict:
 # RANK
 # -----------------------------
 
-def run_rank(canonical_df: pd.DataFrame) -> Dict:
+def run_rank(canonical_df: pd.DataFrame) -> RankResult:
     """
     Rank entities by the active measure.
     """
@@ -50,7 +67,7 @@ def run_rank(canonical_df: pd.DataFrame) -> Dict:
 # TREND
 # -----------------------------
 
-def run_trend(canonical_df: pd.DataFrame) -> Dict:
+def run_trend(canonical_df: pd.DataFrame) -> TrendResult:
     """
     Compute trend of the active measure over time.
     """
@@ -73,7 +90,7 @@ def run_trend(canonical_df: pd.DataFrame) -> Dict:
 # COMPARE
 # -----------------------------
 
-def run_compare(canonical_df: pd.DataFrame) -> Dict:
+def run_compare(canonical_df: pd.DataFrame) -> CompareResult:
     """
     Compare active measure across available dimensions.
     """
