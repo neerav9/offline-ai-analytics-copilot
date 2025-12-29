@@ -15,7 +15,7 @@ from src.v4.analytics_engine import (
     run_compare,
 )
 from src.explanation.explainer import explain
-
+from src.core.semantic_context import SemanticContext, SemanticMode
 
 # --------------------------------------------------
 # Utilities
@@ -90,6 +90,12 @@ def main():
     # -----------------------------
     confirmed = confirm_mappings(proposals)
 
+    # ✅ TASK 1: Explicit semantic context (TEMPORARY DEFAULT)
+    semantic_context = SemanticContext(
+        mode=SemanticMode.SINGLE_MEASURE,
+        #confirmed_by_user=True
+    )
+
     print_header("CONFIRMED MAPPINGS")
     for k, v in confirmed.items():
         print(f"{k} -> {v}")
@@ -115,7 +121,7 @@ def main():
         canonical_df = build_canonical_dataframe(
             df=df,
             confirmed_mappings=confirmed,
-            active_measure=active_measure
+            semantic_context=semantic_context   # ✅ PASS CONTEXT
         )
     except SchemaValidationError as e:
         print_header("SCHEMA VALIDATION ERROR")
@@ -128,7 +134,10 @@ def main():
     # -----------------------------
     # Capability reasoning (MEASURE-INDEPENDENT)
     # -----------------------------
-    capabilities = reason_about_capabilities(canonical_df)
+    capabilities = reason_about_capabilities(
+        canonical_df,
+        semantic_context   # ✅ PASS CONTEXT
+    )
 
     print_header("SYSTEM REASONING")
     print(f"Dataset shape: {canonical_df.shape}")

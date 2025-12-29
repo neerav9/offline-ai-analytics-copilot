@@ -10,7 +10,7 @@ class SchemaValidationError(Exception):
 def build_canonical_dataframe(
     df: pd.DataFrame,
     confirmed_mappings: Dict,
-    active_measure: str
+    semantic_context
 ) -> pd.DataFrame:
     """
     Build canonical dataframe using a runtime-selected active measure.
@@ -24,7 +24,7 @@ def build_canonical_dataframe(
     Parameters:
         df: original dataframe
         confirmed_mappings: output of semantic mapper (measures, entity, time, dimensions)
-        active_measure: selected measure column name
+        semantic_context: frozen semantic context (not used yet in Task 1)
 
     Returns:
         Canonical pandas DataFrame
@@ -34,6 +34,12 @@ def build_canonical_dataframe(
 
     if not measures:
         raise SchemaValidationError("No measures confirmed.")
+
+    # ✅ ACTIVE MEASURE IS NOW READ FROM CONFIRMED MAPPINGS
+    active_measure = confirmed_mappings.get("active_measure")
+
+    if not active_measure:
+        raise SchemaValidationError("No active measure selected.")
 
     if active_measure not in measures:
         raise SchemaValidationError(

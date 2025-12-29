@@ -2,7 +2,8 @@ from typing import Dict
 import pandas as pd
 
 
-def reason_about_capabilities(canonical_df: pd.DataFrame) -> Dict:
+def reason_about_capabilities(canonical_df, semantic_context):
+
     """
     Determine which analytics are safe based on the canonical dataframe.
     Canonical truth:
