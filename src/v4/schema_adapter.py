@@ -1,6 +1,12 @@
 import pandas as pd
 from typing import Dict, List
 
+CANONICAL_COLUMNS = {
+    "measure",
+    "entity",
+    "time"
+}
+CANONICAL_BASE_COLUMNS = {"measure", "entity", "time"}
 
 class SchemaValidationError(Exception):
     """Raised when required canonical fields are missing or invalid."""
@@ -75,5 +81,34 @@ def build_canonical_dataframe(
 
     for idx, dim in enumerate(dimensions, start=1):
         canonical_df[f"dimension_{idx}"] = df[dim]
+    # -----------------------
+    # Canonical schema enforcement
+    # -----------------------
+    unexpected_cols = set(canonical_df.columns) - {
+        col for col in canonical_df.columns
+        if col.startswith("dimension_") or col in CANONICAL_COLUMNS
+    }
+
+    if unexpected_cols:
+        raise SchemaValidationError(
+            f"Non-canonical columns detected: {unexpected_cols}"
+        )
+    # -----------------------
+    # Canonical schema enforcement
+    # -----------------------
+    allowed_columns = set()
+
+    for col in canonical_df.columns:
+        if col.startswith("dimension_"):
+            allowed_columns.add(col)
+        elif col in CANONICAL_BASE_COLUMNS:
+            allowed_columns.add(col)
+
+    unexpected = set(canonical_df.columns) - allowed_columns
+
+    if unexpected:
+        raise SchemaValidationError(
+            f"Non-canonical columns detected in canonical dataframe: {unexpected}"
+        )
 
     return canonical_df
