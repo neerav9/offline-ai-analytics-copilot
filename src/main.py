@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import List
+from src.explanation.interpretation_builder import build_interpretation
 
 # -----------------------------
 # Imports (V4)
@@ -161,8 +162,8 @@ def main():
             print(f"⚠ {r}")
 
     # --------------------------------------------------
-    # Guided analytics loop (ZERO REBUILD)
-    # --------------------------------------------------
+# Guided analytics loop (ZERO REBUILD)
+# --------------------------------------------------
 
     while True:
         print_header("AVAILABLE ANALYSES")
@@ -191,6 +192,13 @@ def main():
         if choice == 9:
             active_measure = select_active_measure(measures)
             canonical_df["measure"] = df[active_measure]
+
+            # OPTIONAL but correct: recompute capabilities
+            capabilities = reason_about_capabilities(
+                canonical_df,
+                semantic_context
+            )
+
             print_header("ACTIVE MEASURE UPDATED")
             print(active_measure)
             continue
@@ -201,7 +209,29 @@ def main():
             continue
 
         # -----------------------------
-        # Execute analytics
+        # TASK 5: Interpretation Preview (BEFORE analytics)
+        # -----------------------------
+        interpretation = build_interpretation(intent, capabilities)
+
+        print_header("INTERPRETATION PREVIEW")
+        print(f"Intent: {interpretation.intent}")
+
+        print("\nPlanned steps:")
+        for step in interpretation.steps:
+            print(f"- {step}")
+
+        if interpretation.assumptions:
+            print("\nAssumptions:")
+            for a in interpretation.assumptions:
+                print(f"• {a}")
+
+        confirm = input("\nProceed with this interpretation? (y/n): ").lower()
+        if confirm != "y":
+            print("Please rephrase or choose a different analysis.")
+            continue   # jump back to menu
+
+        # -----------------------------
+        # Execute analytics (ONLY AFTER CONFIRMATION)
         # -----------------------------
         if intent == "summary":
             result = run_summary(canonical_df)
@@ -222,6 +252,7 @@ def main():
 
         print_header("EXPLANATION")
         print(explanation)
+
 
 
 if __name__ == "__main__":
